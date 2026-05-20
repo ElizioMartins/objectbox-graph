@@ -28,7 +28,7 @@ objectbox-graph          ← this library
   Storage Interface
    │
    ▼
-ObjectBox (objectbox-go) ← storage backend
+ObjectBox (objectbox-go) ← storage backend (phase 2)
   Ultra-fast on-device object store
   On-device Vector Search (HNSW)
 ```
@@ -123,6 +123,35 @@ ok  github.com/ElizioMartins/objectbox-graph/graph
 
 ---
 
+## Benchmarks (MemoryStorage baseline)
+
+> Machine: Intel i5-10400 @ 2.90GHz · Windows 11 · Go 1.26.3
+> Command: `go test ./graph/... -bench=Benchmark -benchmem`
+
+| Benchmark | ns/op | B/op | allocs/op | ops/sec |
+|---|---:|---:|---:|---:|
+| `AddNode` | 647 | 461 | 6 | **1.5M/s** |
+| `AddEdge` | 307 | 161 | 2 | **4.6M/s** |
+| `BFS` — chain 100 nodes | 109,860 | 8,913 | 210 | 9,100/s |
+| `BFS` — chain 1,000 nodes | 11,651,271 | 115,680 | 2,024 | 86/s |
+| `BFS` — fan 1,000 leaves | 188,859 | 159,577 | 46 | 5,300/s |
+| `DFS` — chain 100 nodes | 103,584 | 7,416 | 116 | 9,600/s |
+| `DFS` — chain 1,000 nodes | 11,448,620 | 99,785 | 1,030 | 87/s |
+| `Dijkstra` — chain 100 nodes | 139,346 | 57,352 | 427 | 7,200/s |
+| `Dijkstra` — chain 1,000 nodes | 13,904,844 | **4,480,076** | 4,052 | 72/s |
+
+### Key insight from the benchmarks
+
+The `Dijkstra` 1,000-node row allocates **4.4 MB per call** — because `MemoryStorage`
+holds the entire graph in RAM and the priority queue builds large intermediate structures.
+
+With `ObjectBoxStorage` (phase 2), only the nodes actually *visited* during
+traversal are loaded from disk. For sparse graphs typical of IoT topologies,
+this is expected to reduce per-traversal allocations by **10×–50×**,
+while persisting the graph across device restarts — something Neo4j cannot do on a 512 MB device.
+
+---
+
 ## How it Maps to ObjectBox Relations
 
 The key insight is that ObjectBox's `ToOne` relations are **edges without properties**.
@@ -143,8 +172,8 @@ This library adds `Label` and `Weight` to those edges, turning them into a full 
 
 See [ROADMAP.md](ROADMAP.md) for the full plan.
 
-**Phase 1** (current): Graph layer with in-memory storage 
-**Phase 2**: ObjectBox backend — `Node` and `Edge` as real objectbox-go entities 
+**Phase 1** (done): Graph layer with in-memory storage, 4 passing tests, benchmarks 
+**Phase 2** (in progress): ObjectBox backend — `objectboxstorage/` package ready, pending CGO setup 
 **Phase 3**: Vector + Graph — combine ObjectBox HNSW vector index with graph traversal for on-device RAG 
 **Phase 4**: Proposal to ObjectBox team 
 
