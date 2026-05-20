@@ -1,0 +1,22 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output
+*.out
+dist/
+
+# ObjectBox database files
+objectbox/
+*.mdb
+
+# IDE
+.idea/
+.vscode/
+*.swp
