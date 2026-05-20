@@ -10,7 +10,7 @@ import "fmt"
 //	// For testing:
 //	   store := graph.New(graph.NewMemoryStorage())
 //
-//	// For production (future ObjectBox backend):
+//	// For production (ObjectBox backend):
 //	   store := graph.New(objectboxstorage.New(obxStore))
 type GraphStore struct {
 	storage Storage
@@ -30,6 +30,16 @@ func (g *GraphStore) AddNode(label string, properties map[string]string) (*Node,
 	}
 	node.Id = id
 	return node, nil
+}
+
+// UpdateNode persists changes to an existing node (Id must be set).
+// Use this after modifying node.Embedding or node.Properties.
+func (g *GraphStore) UpdateNode(node *Node) error {
+	if node.Id == 0 {
+		return fmt.Errorf("UpdateNode: node has no ID — use AddNode first")
+	}
+	_, err := g.storage.PutNode(node)
+	return err
 }
 
 // AddEdge inserts a directed, weighted edge between two nodes.

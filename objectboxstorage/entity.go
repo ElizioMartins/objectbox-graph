@@ -26,13 +26,19 @@ package objectboxstorage
 //
 // Properties is stored as a JSON string because ObjectBox does not natively
 // support map types — a deliberate trade-off for on-device compactness.
-// For hot-path properties, promote them to dedicated fields.
+//
+// Embedding is indexed with ObjectBox's HNSW approximate nearest-neighbor
+// algorithm. The dimensions parameter must match the embedding model used:
+//   - 384  for all-MiniLM-L6-v2 (lightweight, runs on-device)
+//   - 768  for all-mpnet-base-v2
+//   - 1536 for OpenAI text-embedding-ada-002
 //
 //go:generate go run github.com/objectbox/objectbox-go/cmd/objectbox-gogen
 type NodeEntity struct {
 	Id         uint64
 	Label      string
-	Properties string // JSON-encoded map[string]string
+	Properties string    // JSON-encoded map[string]string
+	Embedding  []float32 `objectbox:"hnsw:dimensions=384"` // HNSW index
 }
 
 // EdgeEntity is the ObjectBox-persisted representation of a directed,
@@ -41,14 +47,11 @@ type NodeEntity struct {
 // FromId and ToId are stored as plain uint64 foreign keys.
 // They *could* be ToOne<NodeEntity> ObjectBox relations, but plain IDs
 // let us query via EdgeEntity_.FromId.Equals() with zero relation overhead,
-// which is crucial for deep traversals (BFS depth > 3).
-//
-// This design decision is the core of the graph layer's performance story:
-// ObjectBox stores the edges; the graph layer owns the traversal.
+// which is critical for deep traversals (BFS depth > 3).
 type EdgeEntity struct {
 	Id     uint64
-	FromId uint64  // would be ToOne<NodeEntity> in a pure ObjectBox model
-	ToId   uint64  // would be ToOne<NodeEntity> in a pure ObjectBox model
+	FromId uint64
+	ToId   uint64
 	Label  string
 	Weight float64
 }

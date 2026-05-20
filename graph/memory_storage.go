@@ -31,6 +31,12 @@ func (m *MemoryStorage) PutNode(node *Node) (uint64, error) {
 		node.Id = m.nextNodeId
 	}
 	clone := *node
+	// Deep-copy the Embedding slice so mutations to the original don't
+	// affect the stored version (and vice versa).
+	if len(node.Embedding) > 0 {
+		clone.Embedding = make([]float32, len(node.Embedding))
+		copy(clone.Embedding, node.Embedding)
+	}
 	m.nodes[node.Id] = &clone
 	return node.Id, nil
 }
